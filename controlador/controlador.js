@@ -2,9 +2,12 @@ import { json, Router } from "express";
 //import modelo from "../modelo/modelo.js";
 import conexion from "../modelo/conexion.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import cookieParser from "cookie-parser";
 
 //const data = modelo;
 const app = Router();
+const SECRET = 'hola_mundo';
 
 
 // Traer Usuarios de Base de datos 
@@ -101,13 +104,40 @@ app.post('/login', async (req,res)=>{
         const indice = buscar.find(i=> i.usuario_red === usuario_red);
         const comparar = await bcrypt.compare(contrasenna, indice.contrasenna) 
         if (comparar) {
-            res.status(200).json({message:"Bienvenido"})
+            const token = jwt.sign({usuario_red,contrasenna}, SECRET, {expiresIn:'1h'});
+            
+            res.cookie('token', token,{
+                httpOnly: true,
+                secure: false,
+                sameSite:'lax',
+                maxAge: 3600000
+            });
+
+            res.status(200).json({message:"Bienvenido", token})
         } else {
             res.status(404).json({error:"No se encuentra"})
         }
     } catch (error) {
+         console.error("Error en /login:", error);
          res.status(500).json({error:"Api o base de datos"})
     }
+})
+
+// perfil con datos del token
+
+app.get('/perfil', (req, res)=>{
+    const token = req.cookies.token;
+    if (!token) {
+        return res.status(404).json({error:'token no existe'})
+    }
+
+    try {
+        const datos = jwt.verify(token, SECRET);
+        return res.json({usuario: datos.usuario_red})
+    } catch (error) {
+        return res.status(400).json({error:'token modificado'})
+    }
+
 })
 
 
