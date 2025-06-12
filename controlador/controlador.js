@@ -9,9 +9,23 @@ import cookieParser from "cookie-parser";
 const app = Router();
 const SECRET = 'hola_mundo';
 
+function validarToken(req,res,next) {
+    const token = req.cookies.token;
+    if (!token) {
+        res.status(404)
+    }
+    try {
+        const verificar = jwt.verify(token, SECRET);
+        //res.status(200).json({ok:'Token Valido', message: verificar});
+        next();
+    } catch (error) {
+        res.status(401).json({message:'Token Dañado'})
+    }
+}
+
 
 // Traer Usuarios de Base de datos 
-app.get('/database', async (req, res) => {
+app.get('/database', validarToken, async (req, res) => {
     const {usuario_red} = req.query
     try {
         
@@ -104,10 +118,10 @@ app.post('/login', async (req,res)=>{
         const indice = buscar.find(i=> i.usuario_red === usuario_red);
         const comparar = await bcrypt.compare(contrasenna, indice.contrasenna) 
         if (comparar) {
-            const token = jwt.sign({usuario_red,contrasenna}, SECRET, {expiresIn:'1h'});
+            const token = jwt.sign({usuario_red,correo:indice.correo , nombres:indice.nombres, documento:indice.documento, rol:indice.rol}, SECRET, {expiresIn:'1h'});
             
             res.cookie('token', token,{
-                httpOnly: true,
+                httpOnly: false,
                 secure: false,
                 sameSite:'lax',
                 maxAge: 3600000
@@ -123,6 +137,23 @@ app.post('/login', async (req,res)=>{
     }
 })
 
+
+// /dashboardPrincipal
+// /dashboardUsuarios
+
+// Cerrar Seccion 
+
+app.post('/cerrada', (req, res) => {
+    res.clearCookie('token', {
+        httpOnly: false,
+        secure: false,
+        sameSite: 'lax'
+    });
+    res.status(200).json({ ok: 'Sesión Cerrada' });
+});
+
+
+
 // perfil con datos del token
 
 app.get('/perfil', (req, res)=>{
@@ -133,7 +164,7 @@ app.get('/perfil', (req, res)=>{
 
     try {
         const datos = jwt.verify(token, SECRET);
-        return res.json({usuario: datos.usuario_red})
+        return res.json({usuario: datos.usuario_red, correo: datos.correo, nombres: datos.nombres, documento: datos.documento, rol: datos.rol })
     } catch (error) {
         return res.status(400).json({error:'token modificado'})
     }
