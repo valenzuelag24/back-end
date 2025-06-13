@@ -4,24 +4,14 @@ import conexion from "../modelo/conexion.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
+import dotenv from 'dotenv'
+import validarToken from "./verificarToken.js";
 
 //const data = modelo;
+dotenv.config()
 const app = Router();
-const SECRET = 'hola_mundo';
+const SECRET = process.env.SECRET;
 
-function validarToken(req,res,next) {
-    const token = req.cookies.token;
-    if (!token) {
-        res.status(404)
-    }
-    try {
-        const verificar = jwt.verify(token, SECRET);
-        //res.status(200).json({ok:'Token Valido', message: verificar});
-        next();
-    } catch (error) {
-        res.status(401).json({message:'Token Dañado'})
-    }
-}
 
 
 // Traer Usuarios de Base de datos 
